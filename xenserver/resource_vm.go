@@ -46,6 +46,8 @@ const (
 	vmSchemaCoresPerSocket            = "cores_per_socket"
 	vmSchemaXenstoreData              = "xenstore_data"
 	vmSchemaOtherConfig               = "other_config"
+	vmSchemaCopyType                  = "copy_type"
+	vmSchemaStorageRepository         = "storage_repository"
 )
 
 func resourceVM() *schema.Resource {
@@ -151,6 +153,14 @@ func resourceVM() *schema.Resource {
 				Type:     schema.TypeMap,
 				Optional: true,
 			},
+			vmSchemaCopyType: &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			vmSchemaStorageRepository: &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -197,7 +207,20 @@ func resourceVMCreate(d *schema.ResourceData, m interface{}) error {
 
 	dNameLabel := d.Get(vmSchemaNameLabel).(string)
 
-	xenVM, err := c.client.VM.Clone(c.session, xenBaseTemplate, dNameLabel)
+	cloneType := d.Get(vmSchemaCopyType).(string)
+
+	var xenVM xenAPI.VMRef
+
+	if cloneType == "full" {
+		storageRepository := xenAPI.SRRef(d.Get(vmSchemaStorageRepository).(string))
+		if storageRepository == "" {
+			return fmt.Errorf("clone_type 'full' was specified, but storage_repository not specified")
+		}
+		xenVM, err = c.client.VM.Copy(c.session, xenBaseTemplate, dNameLabel, storageRepository)
+	} else {
+		xenVM, err = c.client.VM.Clone(c.session, xenBaseTemplate, dNameLabel)
+	}
+
 	if err != nil {
 		return err
 	}
