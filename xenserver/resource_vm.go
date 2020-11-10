@@ -599,7 +599,7 @@ func resourceVMUpdate(d *schema.ResourceData, m interface{}) error {
 
 		var err error
 		var remove []*VIFDescriptor
-		if remove, err = readVIFsFromSchema(c, os.Difference(ns).List()); err == nil {
+		if remove, err = readVIFsFromSchema(c, os.Difference(ns).List()); err != nil {
 			return err
 		}
 
@@ -636,12 +636,15 @@ func resourceVMUpdate(d *schema.ResourceData, m interface{}) error {
 					if err := c.client.VIF.Destroy(c.session, vifToRemove.VIFRef); err != nil {
 						return err
 					}
+
+					// Decrement VIFCount after removal success
+					vm.VIFCount--
 				}
 			}
 		}
 
 		var create []*VIFDescriptor
-		if create, err = readVIFsFromSchema(c, ns.Difference(os).List()); err == nil {
+		if create, err = readVIFsFromSchema(c, ns.Difference(os).List()); err != nil {
 			return err
 		}
 
